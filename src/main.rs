@@ -1,22 +1,23 @@
-use log::{debug, info, error, warn};
 use crate::parser::{
+    book_page::get_and_parse_book_page,
     root_page::get_and_parse_root_page,
-    tag_page::{get_max_tag_page_count, get_and_parse_tag_page},
-    book_page::get_and_parse_book_page
+    tag_page::{get_and_parse_tag_page, get_max_tag_page_count},
 };
+use log::{debug, error, info, warn};
 
-mod parser;
 mod book;
+mod logs;
+mod parser;
 mod store;
 mod utils;
-mod logs;
 
+#[allow(clippy::cognitive_complexity)]
 fn main() {
     if let Err(e) = crate::logs::init() {
         println!("init log failed, e= {:?}", e);
         return;
     }
-    
+
     if let Err(e) = crate::store::init() {
         error!("init store failed, e= {:?}", e);
         return;
@@ -38,19 +39,28 @@ fn main() {
         let max_tag_page_count = match get_max_tag_page_count(tag_url.as_str()) {
             Ok(v) => v,
             Err(e) => {
-                warn!("failed to get max tag page count, ignore this tag, e= {:?}", e);
+                warn!(
+                    "failed to get max tag page count, ignore this tag, e= {:?}",
+                    e
+                );
                 continue;
             }
         };
         if max_tag_page_count == 0 {
-            warn!("max tag page count is zero, ignore this tag, tag_page_url= {:?}", tag_url);
+            warn!(
+                "max tag page count is zero, ignore this tag, tag_page_url= {:?}",
+                tag_url
+            );
             continue;
         }
-        info!("get max tag page count success, count= {:?}, tag_page_url= {:?}", max_tag_page_count, tag_url);
+        info!(
+            "get max tag page count success, count= {:?}, tag_page_url= {:?}",
+            max_tag_page_count, tag_url
+        );
 
-        const COUNT_PER_PAGE:i32 = 20;
+        const COUNT_PER_PAGE: i32 = 20;
         for idx in 0..max_tag_page_count {
-            let tag_page_url = format!("{}?start={}&type=T", tag_url, idx*COUNT_PER_PAGE);
+            let tag_page_url = format!("{}?start={}&type=T", tag_url, idx * COUNT_PER_PAGE);
             let books_url = match get_and_parse_tag_page(tag_page_url.as_str()) {
                 Ok(books_url) => books_url,
                 Err(e) => {
@@ -69,19 +79,28 @@ fn main() {
                     }
                 };
                 let book_title = book.title.clone();
-                info!("parse book success, title= {:?}, url= {:?}", book_title, book_url);
+                info!(
+                    "parse book success, title= {:?}, url= {:?}",
+                    book_title, book_url
+                );
                 if let Err(e) = crate::store::store(book_url.as_str(), book) {
                     warn!("store book page failed, e= {:?}, url= {:?}", e, book_url);
                 }
-                info!("store book success, title= {:?}, url= {:?}", book_title, book_url);
+                info!(
+                    "store book success, title= {:?}, url= {:?}",
+                    book_title, book_url
+                );
             }
 
-            info!("store all books in this tag page success, tag_page_url= {:?}", tag_page_url);
+            info!(
+                "store all books in this tag page success, tag_page_url= {:?}",
+                tag_page_url
+            );
             if idx >= 1 {
                 break;
             }
         }
-        
+
         break;
     }
 }

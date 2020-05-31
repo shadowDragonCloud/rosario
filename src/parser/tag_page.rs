@@ -1,10 +1,10 @@
 use crate::utils::{get_page, get_selector, node_ref_text};
-use scraper::Html;
-use scraper::node::Node;
-use scraper::element_ref::ElementRef;
-use std::iter::Iterator;
 use anyhow::anyhow;
 use log::{debug, warn};
+use scraper::element_ref::ElementRef;
+use scraper::node::Node;
+use scraper::Html;
+use std::iter::Iterator;
 
 pub(crate) fn get_max_tag_page_count(tag_page_url: &str) -> anyhow::Result<i32> {
     let resp_text = get_page(tag_page_url)?;
@@ -18,14 +18,17 @@ pub(crate) fn get_max_tag_page_count(tag_page_url: &str) -> anyhow::Result<i32> 
             for text in a_texts {
                 match text.parse::<i32>() {
                     Ok(v) => max_tag_page_count = v,
-                    Err(e) => warn!("get max page count error, e= {:?}, tag_page_url= {:?}", e, tag_page_url)
+                    Err(e) => warn!(
+                        "get max page count error, e= {:?}, tag_page_url= {:?}",
+                        e, tag_page_url
+                    ),
                 }
             }
             Ok(max_tag_page_count)
         }
-        None => {
-            Err(anyhow!("parse max tag page count error, no paginator found"))
-        }
+        None => Err(anyhow!(
+            "parse max tag page count error, no paginator found"
+        )),
     }
 }
 
@@ -48,7 +51,10 @@ pub(crate) fn get_and_parse_tag_page(tag_page_url: &str) -> anyhow::Result<Vec<S
                 if let Some(t) = a.value().attr("title") {
                     title = String::from(t);
                 }
-                debug!("parse new book url, title: {:?}, book_url: {:?}", title, url);
+                debug!(
+                    "parse new book url, title: {:?}, book_url: {:?}",
+                    title, url
+                );
                 if url.is_empty() {
                     warn!("href not found, tag_page_url= {:?}", tag_page_url);
                     continue;
@@ -71,10 +77,13 @@ fn parse_children_a_texts(element_ref: ElementRef, tag_page_url: &str) -> Vec<St
                 if !texts.is_empty() {
                     a_texts.push(texts[0].trim().to_owned());
                 } else {
-                    warn!("get max page count error, text is empty, tag_page_url= {:?}", tag_page_url);
+                    warn!(
+                        "get max page count error, text is empty, tag_page_url= {:?}",
+                        tag_page_url
+                    );
                 }
             }
-            _ => ()
+            _ => (),
         }
     }
 

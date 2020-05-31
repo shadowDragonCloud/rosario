@@ -8,7 +8,7 @@ pub struct Score {
     pub four_star_pct: f32,
     pub three_star_pct: f32,
     pub two_star_pct: f32,
-    pub one_star_pct: f32
+    pub one_star_pct: f32,
 }
 
 impl fmt::Display for Score {
@@ -53,8 +53,16 @@ impl fmt::Display for Book {
         writeln!(f, "URL: {}", self.location)?;
         writeln!(f, "原作名: {}", self.origin_title)?;
         writeln!(f, "副标题: {}", self.subtitle)?;
-        writeln!(f, "作者: {}", vec2comma_seperated_string(self.author.as_slice()))?;
-        writeln!(f, "译者: {}", vec2comma_seperated_string(self.translator.as_slice()))?;
+        writeln!(
+            f,
+            "作者: {}",
+            vec2comma_seperated_string(self.author.as_slice())
+        )?;
+        writeln!(
+            f,
+            "译者: {}",
+            vec2comma_seperated_string(self.translator.as_slice())
+        )?;
         writeln!(f, "出版社: {}", self.press)?;
         writeln!(f, "出品方: {}", self.producer)?;
         writeln!(f, "出版年: {}", self.publication_year)?;
@@ -72,16 +80,12 @@ impl fmt::Display for Book {
 }
 
 fn vec2comma_seperated_string(v: &[String]) -> String {
-    let mut res = String::new();
-    let len = v.len();
-    if len == 0 {
-        return res;
-    }
-
-    for i in 0..len-1 {
-        res.push_str(v[i].as_str());
-        res.push_str(", ");
-    }
-    res.push_str(v[len-1].as_str());
-    res
+    let init_res = String::new();
+    v.iter().fold(init_res, |mut res, s| {
+        if !res.is_empty() {
+            res.push_str(", ");
+        }
+        res.push_str(s.as_str());
+        res
+    })
 }
