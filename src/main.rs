@@ -2,17 +2,24 @@ use scraper::{Html, Selector};
 use scraper::node::Node;
 use scraper::element_ref::ElementRef;
 use ego_tree::NodeRef;
-use crate::book::{Book, Score};
 use std::iter::Iterator;
 use anyhow::{Context, anyhow};
+use log::{debug, info, error, warn, trace};
+use crate::book::{Book, Score};
 
 mod book;
 mod store;
 mod utils;
+mod logs;
 
 fn main() {
+    if let Err(e) = crate::logs::init() {
+        println!("init log failed, e= {:?}", e);
+        return;
+    }
+    
     if let Err(e) = crate::store::init() {
-        println!("init store failed, e= {:?}", e);
+        error!("init store failed, e= {:?}", e);
         return;
     }
 
@@ -20,32 +27,37 @@ fn main() {
     let tags_href = match get_and_parse_root_page() {
         Ok(tags_href) => tags_href,
         Err(e) => {
-            println!("{:?}", e);
+            error!("{:?}", e);
             return;
         }
     };
+    info!("parse root page success");
 
     for tag_href in tags_href {
         let tag_url = format!("{}{}", host, tag_href);
         let books_url = match get_and_parse_tag_page(tag_url.as_str()) {
             Ok(books_url) => books_url,
             Err(e) => {
-                println!("{:?}", e);
+                warn!("{:?}", e);
                 continue;
             }
         };
+        info!("parse tag page suceess, url= {:?}", tag_url);
 
         for book_url in books_url {
             let book = match get_and_parse_book_page(book_url.as_str()) {
                 Ok(book) => book,
                 Err(e) => {
-                    println!("{:?}", e);
+                    warn!("parse book page failed, e= {:?}", e);
                     continue;
                 }
             };
+            let book_title = book.title.clone();
+            info!("parse book success, title= {:?}, url= {:?}", book_title, book_url);
             if let Err(e) = crate::store::store(book_url.as_str(), book) {
-                println!("{:?}", e);
+                warn!("store book page failed, e= {:?}", e);
             }
+            info!("store book success, title= {:?}, url= {:?}", book_title, book_url);
         }
 
         break;
@@ -54,7 +66,7 @@ fn main() {
 
 fn get_page(url: &str) -> anyhow::Result<String> {
     let resp = reqwest::blocking::get(url).with_context(|| format!("failed to get page, url= {:?}", url))?;
-    println!("response status: {:?}", resp.status());
+    debug!("response status: {:?}, url= {:?}", resp.status(), url);
     resp.text().with_context(|| format!("faild to get resp text, url= {:?}", url))
 }
 
@@ -99,9 +111,9 @@ fn get_and_parse_tag_page(tag_page_url: &str) -> anyhow::Result<Vec<String>> {
                 if let Some(t) = a.value().attr("title") {
                     title = String::from(t);
                 }
-                println!("title: {:?}, book_url: {:?}", title, url);
+                debug!("parse new book url, title: {:?}, book_url: {:?}", title, url);
                 if url.is_empty() {
-                    println!("href not found, tag_page_url= {:?}", tag_page_url);
+                    warn!("href not found, tag_page_url= {:?}", tag_page_url);
                     continue;
                 }
                 books_url.push(url.clone());
@@ -133,7 +145,7 @@ fn get_and_parse_book_page(book_page_url: &str) -> anyhow::Result<Book> {
     // basic info
     let div_info_selector = get_selector(r#"div[id="info"]"#)?;
     if let Some(div_info) = document.select(&div_info_selector).next() {
-        //println!("div_info is not none");
+        trace!("div_info is not none");
         let span_p1_selector = get_selector(r#"span[class="pl"]"#)?;
         let span_p1_iter = div_info.select(&span_p1_selector);
         for span_p1 in span_p1_iter {
@@ -141,7 +153,7 @@ fn get_and_parse_book_page(book_page_url: &str) -> anyhow::Result<Book> {
             let info_type = if !text.is_empty() {
                 clean_basic_info_type(text[0])
             } else {
-                println!("span_p1 is empty, url= {:?}", book.location);
+                warn!("parse basic info error, span_p1 is empty, url= {:?}", book.location);
                 continue;
             };
 
@@ -168,16 +180,16 @@ fn get_and_parse_book_page(book_page_url: &str) -> anyhow::Result<Book> {
             Some(strong_rating_num) => {
                 let text = strong_rating_num.text().collect::<Vec<_>>();
                 if text.is_empty() {
-                    println!("rating_num text is empty, url= {:?}", book.location);
+                    warn!("parse score error, rating_num text is empty, url= {:?}", book.location);
                 } else {
                     let rating_num = text[0].trim().parse::<f32>();
                     match rating_num {
                         Ok(rating_num) => score.score = rating_num,
-                        Err(e) => println!("parse rating_num to f32 fail, e= {:?}, url= {:?}", e, book.location)
+                        Err(e) => warn!("parse score error, parse rating_num to f32 fail, e= {:?}, url= {:?}", e, book.location)
                     }
                 }
             },
-            None => println!("strong_rating_num is empty, url= {:?}", book.location)
+            None => warn!("parse score error, strong_rating_num is empty, url= {:?}", book.location)
         }
 
         // rating_people
@@ -186,16 +198,16 @@ fn get_and_parse_book_page(book_page_url: &str) -> anyhow::Result<Book> {
             Some(a_rating_people) => {
                 let text = a_rating_people.text().collect::<Vec<_>>();
                 if text.is_empty() {
-                    println!("rating_people text is empty, url= {:?}", book.location);
+                    warn!("parse score error, rating_people text is empty, url= {:?}", book.location);
                 } else {
                     let rating_people = text[0].trim().parse::<i32>();
                     match rating_people {
                         Ok(rating_people) => score.score_num = rating_people,
-                        Err(e) => println!("parse rating_people to i32 fail, e= {:?}, url= {:?}", e, book.location)
+                        Err(e) => warn!("parse score error, parse rating_people to i32 fail, e= {:?}, url= {:?}", e, book.location)
                     }
                 }
             },
-            None => println!("a_rating_people is empty, url= {:?}", book.location)
+            None => warn!("parse score error, a_rating_people is empty, url= {:?}", book.location)
         }
 
         // star percent
@@ -225,7 +237,7 @@ fn get_and_parse_book_page(book_page_url: &str) -> anyhow::Result<Book> {
                                                 expect_star_value = false;
                                             }
                                             Err(e) => {
-                                                println!("parse start_value to f32 fail, e= {:?}, url= {:?}", e, book.location);
+                                                warn!("parse score error, parse start_value to f32 fail, e= {:?}, url= {:?}", e, book.location);
                                                 break;
                                             }
                                         }
@@ -237,21 +249,15 @@ fn get_and_parse_book_page(book_page_url: &str) -> anyhow::Result<Book> {
                             }
                         },
                         Node::Text(text) => {
-                            //println!("Text text:");
-                            let text = text.trim();
-                            if text.is_empty() {
-                                //println!("empty");
-                            } else {
-                                println!("{}", text);
-                            }
+                            trace!("parse score, Text node found, text= {:?}, url= {:?}", text.trim(), book.location);
                         }
                         _ => {
-                            println!("unexpected node");
+                            warn!("parse score error, star percent unexpected node, url= {:?}", book.location);
                         }
                     }
                 }
             },
-            None => println!("div_rating_self is empty, url= {:?}", book.location)
+            None => warn!("parse score error, div_rating_self is empty, url= {:?}", book.location)
         }
     }
     book.score = score;
@@ -284,13 +290,12 @@ fn get_and_parse_book_page(book_page_url: &str) -> anyhow::Result<Book> {
         // directory
         let book_id = utils::parse_book_id(book_page_url);
         if book_id.is_empty() {
-            println!("book_id is empty, book_page_url= {:?}", book_page_url);
+            warn!("parse related info, book_id is empty, book_page_url= {:?}", book_page_url);
         }
         let div_dir_id_full_selector = get_selector(format!("div[id=\"dir_{}_full\"]", book_id).as_str())?;
         if let Some(div_dir_id_full) = div_related_info.select(&div_dir_id_full_selector).next() {
             book.directory = clean_related_info_text(Box::new(div_dir_id_full.text()), true);
         }
-
     }
 
 
@@ -305,7 +310,7 @@ fn fill_star_value(score: &mut Score, star_value: f32, star_desc: &str, location
         "2星" => score.two_star_pct = star_value,
         "1星" => score.one_star_pct = star_value,
         _ => {
-            println!("unknown star_desc, star_desc= {:?}, url= {:?}", star_desc, location);
+            warn!("fill start value error, unknown star_desc, star_desc= {:?}, url= {:?}", star_desc, location);
             return false
         }
     }
@@ -314,7 +319,7 @@ fn fill_star_value(score: &mut Score, star_value: f32, star_desc: &str, location
 }
 
 fn parse_basic_info_text(node_ref: NodeRef<Node>, info_a_texts: &mut Vec<String>, info_text_texts: &mut Vec<String>) -> bool {
-    //println!("parse basic info, info_a_texts= {:?}, info_text_texts= {:?}", info_a_texts, info_text_texts);
+    trace!("parse basic info, info_a_texts= {:?}, info_text_texts= {:?}", info_a_texts, info_text_texts);
     const BR_NAME: &str = "br";
     const A_NAME: &str = "a";
     let mut should_end = false;
@@ -357,13 +362,13 @@ fn node_ref_text(node_ref: NodeRef<Node>) -> Vec<String> {
 }
 
 fn fill_book_basic_info(book: &mut Book, info_type: &str, mut info_text_texts: Vec<String>, mut info_a_texts: Vec<String>) {
-    //println!("fill basic info, info_type= {:?} info_a_texts= {:?}, info_text_texts= {:?}", info_type, info_a_texts, info_text_texts);
+    debug!("fill basic info, info_type= {:?} info_a_texts= {:?}, info_text_texts= {:?}", info_type, info_a_texts, info_text_texts);
     let info_texts = &mut info_a_texts;
     info_texts.append(&mut info_text_texts);
 
     let info_texts = info_a_texts;
     if info_texts.is_empty() {
-        println!("info_texts is empty, url= {:?}, info_type= {:?}", book.location, info_type);
+        warn!("fill basic info error, info_texts is empty, url= {:?}, info_type= {:?}", book.location, info_type);
         return;
     }
 
@@ -407,7 +412,7 @@ fn fill_book_basic_info(book: &mut Book, info_type: &str, mut info_text_texts: V
             book.isbn = single_info_value;
         }
         _ => {
-            println!("unexpected info_type, info_type= {:?}, url= {:?}, info_type= {:?}", info_type, book.location, info_type);
+            warn!("unexpected info_type, info_type= {:?}, url= {:?}", info_type, book.location);
         }
     }
 }
