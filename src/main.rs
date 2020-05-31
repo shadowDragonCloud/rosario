@@ -433,6 +433,9 @@ fn fill_book_basic_info(book: &mut Book, info_type: &str, mut info_text_texts: V
         "原作名" => {
             book.origin_title = single_info_value;
         }
+        "副标题" => {
+            book.subtitle = single_info_value;
+        }
         "作者" => {
             for text in info_texts {
                 book.author.push(text.replace(" ", ""));
@@ -466,6 +469,9 @@ fn fill_book_basic_info(book: &mut Book, info_type: &str, mut info_text_texts: V
         }
         "isbn" | "ISBN" => {
             book.isbn = single_info_value;
+        }
+        "统一书号" => {
+            book.unified_book_number = single_info_value;
         }
         _ => {
             warn!("unexpected info_type, info_type= {:?}, url= {:?}", info_type, book.location);

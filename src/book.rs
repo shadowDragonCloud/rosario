@@ -28,6 +28,7 @@ pub struct Book {
     pub title: String,
     pub location: String,
     pub origin_title: String,
+    pub subtitle: String,
     pub author: Vec<String>,
     pub translator: Vec<String>,
     pub press: String,
@@ -38,6 +39,7 @@ pub struct Book {
     pub binding: String,
     pub series: String,
     pub isbn: String,
+    pub unified_book_number: String,
     pub score: Score,
 
     pub content_intro: String,
@@ -50,6 +52,7 @@ impl fmt::Display for Book {
         writeln!(f, "书名: {}", self.title)?;
         writeln!(f, "URL: {}", self.location)?;
         writeln!(f, "原作名: {}", self.origin_title)?;
+        writeln!(f, "副标题: {}", self.subtitle)?;
         writeln!(f, "作者: {}", vec2comma_seperated_string(self.author.as_slice()))?;
         writeln!(f, "译者: {}", vec2comma_seperated_string(self.translator.as_slice()))?;
         writeln!(f, "出版社: {}", self.press)?;
@@ -60,6 +63,7 @@ impl fmt::Display for Book {
         writeln!(f, "装帧: {}", self.binding)?;
         writeln!(f, "丛书: {}", self.series)?;
         writeln!(f, "isbn: {}", self.isbn)?;
+        writeln!(f, "统一书号: {}", self.unified_book_number)?;
         writeln!(f, "\n{}\n", self.score)?;
         writeln!(f, "内容简介:\n{}\n", self.content_intro)?;
         writeln!(f, "作者简介:\n{}\n", self.author_intro)?;
