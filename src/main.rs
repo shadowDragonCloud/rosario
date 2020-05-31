@@ -35,31 +35,53 @@ fn main() {
 
     for tag_href in tags_href {
         let tag_url = format!("{}{}", host, tag_href);
-        let books_url = match get_and_parse_tag_page(tag_url.as_str()) {
-            Ok(books_url) => books_url,
+        let max_tag_page_count = match get_max_tag_page_count(tag_url.as_str()) {
+            Ok(v) => v,
             Err(e) => {
-                warn!("{:?}", e);
+                warn!("failed to get max tag page count, ignore this tag, e= {:?}", e);
                 continue;
             }
         };
-        info!("parse tag page suceess, url= {:?}", tag_url);
+        if max_tag_page_count == 0 {
+            warn!("max tag page count is zero, ignore this tag, tag_page_url= {:?}", tag_url);
+            continue;
+        }
+        info!("get max tag page count success, count= {:?}, tag_page_url= {:?}", max_tag_page_count, tag_url);
 
-        for book_url in books_url {
-            let book = match get_and_parse_book_page(book_url.as_str()) {
-                Ok(book) => book,
+        const COUNT_PER_PAGE:i32 = 20;
+        for idx in 0..max_tag_page_count {
+            let tag_page_url = format!("{}?start={}&type=T", tag_url, idx*COUNT_PER_PAGE);
+            let books_url = match get_and_parse_tag_page(tag_page_url.as_str()) {
+                Ok(books_url) => books_url,
                 Err(e) => {
-                    warn!("parse book page failed, e= {:?}", e);
+                    warn!("{:?}", e);
                     continue;
                 }
             };
-            let book_title = book.title.clone();
-            info!("parse book success, title= {:?}, url= {:?}", book_title, book_url);
-            if let Err(e) = crate::store::store(book_url.as_str(), book) {
-                warn!("store book page failed, e= {:?}", e);
-            }
-            info!("store book success, title= {:?}, url= {:?}", book_title, book_url);
-        }
+            info!("parse tag page suceess, url= {:?}", tag_page_url);
 
+            for book_url in books_url {
+                let book = match get_and_parse_book_page(book_url.as_str()) {
+                    Ok(book) => book,
+                    Err(e) => {
+                        warn!("parse book page failed, e= {:?}", e);
+                        continue;
+                    }
+                };
+                let book_title = book.title.clone();
+                info!("parse book success, title= {:?}, url= {:?}", book_title, book_url);
+                if let Err(e) = crate::store::store(book_url.as_str(), book) {
+                    warn!("store book page failed, e= {:?}", e);
+                }
+                info!("store book success, title= {:?}, url= {:?}", book_title, book_url);
+            }
+
+            info!("store all books in this tag page success, tag_page_url= {:?}", tag_page_url);
+            if idx >= 2 {
+                break;
+            }
+        }
+        
         break;
     }
 }
@@ -90,6 +112,40 @@ fn get_and_parse_root_page() -> anyhow::Result<Vec<String>> {
         }
     }
     Ok(tags_href)
+}
+
+fn get_max_tag_page_count(tag_page_url: &str) -> anyhow::Result<i32> {
+    let resp_text = get_page(tag_page_url)?;
+    let document = Html::parse_document(resp_text.as_str());
+
+    let mut max_tag_page_count = 0;
+    let div_paginator_selector = get_selector(r#"div[class="paginator"]"#)?;
+    match document.select(&div_paginator_selector).next() {
+        Some(div_paginator) => {
+            let children = div_paginator.children();
+            for child in children {
+                const A_NAME: &str = "a";
+                match child.value() {
+                    Node::Element(element) if element.name() == A_NAME => {
+                        let texts = node_ref_text(child);
+                        if !texts.is_empty() {
+                            match texts[0].trim().parse::<i32>() {
+                                Ok(v) => max_tag_page_count = v,
+                                Err(e) => warn!("get max page count error, e= {:?}, tag_page_url= {:?}", e, tag_page_url)
+                            }
+                        } else {
+                            warn!("get max page count error, text is empty, tag_page_url= {:?}", tag_page_url);
+                        }
+                    }
+                    _ => ()
+                }
+            }
+            Ok(max_tag_page_count)
+        }
+        None => {
+            Err(anyhow!("parse max tag page count error, no paginator found"))
+        }
+    }
 }
 
 fn get_and_parse_tag_page(tag_page_url: &str) -> anyhow::Result<Vec<String>> {
