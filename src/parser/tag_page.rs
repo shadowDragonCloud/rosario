@@ -1,4 +1,5 @@
-use crate::utils::{get_page, get_selector, node_ref_text};
+use crate::fetch::get_page;
+use crate::utils::{get_selector, node_ref_text};
 use anyhow::anyhow;
 use log::{debug, warn};
 use scraper::element_ref::ElementRef;
@@ -6,8 +7,8 @@ use scraper::node::Node;
 use scraper::Html;
 use std::iter::Iterator;
 
-pub(crate) fn get_max_tag_page_count(tag_page_url: &str) -> anyhow::Result<i32> {
-    let resp_text = get_page(tag_page_url)?;
+pub(crate) fn get_max_tag_page_count(tag_page_url: &str, referrer: &str) -> anyhow::Result<i32> {
+    let resp_text = get_page(tag_page_url, referrer)?;
     let document = Html::parse_document(resp_text.as_str());
 
     let mut max_tag_page_count = 0;
@@ -32,8 +33,11 @@ pub(crate) fn get_max_tag_page_count(tag_page_url: &str) -> anyhow::Result<i32> 
     }
 }
 
-pub(crate) fn get_and_parse_tag_page(tag_page_url: &str) -> anyhow::Result<Vec<String>> {
-    let resp_text = get_page(tag_page_url)?;
+pub(crate) fn get_and_parse_tag_page(
+    tag_page_url: &str,
+    referrer: &str,
+) -> anyhow::Result<Vec<String>> {
+    let resp_text = get_page(tag_page_url, referrer)?;
     let document = Html::parse_document(resp_text.as_str());
     let li_selector = get_selector(r#"li[class="subject-item"]"#)?;
     let h2_selector = get_selector("h2")?;

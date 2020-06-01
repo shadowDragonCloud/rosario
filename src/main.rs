@@ -6,6 +6,7 @@ use crate::parser::{
 use log::{debug, error, info, warn};
 
 mod book;
+mod fetch;
 mod logs;
 mod parser;
 mod store;
@@ -23,6 +24,12 @@ fn main() {
         return;
     }
 
+    if let Err(e) = crate::fetch::init() {
+        error!("init fetch failed, e= {:?}", e);
+        return;
+    }
+
+    // parse root page
     let tags_href = match get_and_parse_root_page() {
         Ok(tags_href) => tags_href,
         Err(e) => {
@@ -34,9 +41,11 @@ fn main() {
     debug!("tags_href= {:?}", tags_href);
 
     const HOST: &str = "https://book.douban.com";
+    const ROOT_URL: &str = "https://book.douban.com/tag/";
     for tag_href in tags_href {
+        // parse tag page, get max tag page count
         let tag_url = format!("{}{}", HOST, tag_href);
-        let max_tag_page_count = match get_max_tag_page_count(tag_url.as_str()) {
+        let max_tag_page_count = match get_max_tag_page_count(tag_url.as_str(), ROOT_URL) {
             Ok(v) => v,
             Err(e) => {
                 warn!(
@@ -58,10 +67,17 @@ fn main() {
             max_tag_page_count, tag_url
         );
 
+        // trace all tag pages of a tag
         const COUNT_PER_PAGE: i32 = 20;
         for idx in 0..max_tag_page_count {
+            // parse tag page, get book urls
             let tag_page_url = format!("{}?start={}&type=T", tag_url, idx * COUNT_PER_PAGE);
-            let books_url = match get_and_parse_tag_page(tag_page_url.as_str()) {
+            let referrer = if idx == 0 {
+                tag_url.clone()
+            } else {
+                format!("{}?start={}&type=T", tag_url, (idx - 1) * COUNT_PER_PAGE)
+            };
+            let books_url = match get_and_parse_tag_page(tag_page_url.as_str(), referrer.as_str()) {
                 Ok(books_url) => books_url,
                 Err(e) => {
                     warn!("{:?}", e);
@@ -70,8 +86,9 @@ fn main() {
             };
             info!("parse tag page suceess, url= {:?}", tag_page_url);
 
+            // parse book page, get book info
             for book_url in books_url {
-                let book = match get_and_parse_book_page(book_url.as_str()) {
+                let book = match get_and_parse_book_page(book_url.as_str(), tag_page_url.as_str()) {
                     Ok(book) => book,
                     Err(e) => {
                         warn!("parse book page failed, e= {:?}, url= {:?}", e, book_url);

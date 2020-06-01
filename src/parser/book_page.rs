@@ -1,6 +1,7 @@
 use crate::book::{Book, Score};
+use crate::fetch::get_page;
+use crate::utils::get_selector;
 use crate::utils::node_ref_text;
-use crate::utils::{get_page, get_selector};
 use ego_tree::NodeRef;
 use log::{debug, trace, warn};
 use scraper::element_ref::ElementRef;
@@ -8,8 +9,8 @@ use scraper::node::Node;
 use scraper::Html;
 use std::iter::Iterator;
 
-pub(crate) fn get_and_parse_book_page(book_page_url: &str) -> anyhow::Result<Book> {
-    let resp_text = get_page(book_page_url)?;
+pub(crate) fn get_and_parse_book_page(book_page_url: &str, referrer: &str) -> anyhow::Result<Book> {
+    let resp_text = get_page(book_page_url, referrer)?;
     let document = Html::parse_document(resp_text.as_str());
 
     let mut book: Book = Default::default();

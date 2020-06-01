@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context};
 use ego_tree::NodeRef;
-use log::debug;
 use scraper::element_ref::ElementRef;
 use scraper::node::Node;
 use scraper::Selector;
@@ -17,14 +16,6 @@ pub(crate) fn parse_book_id(book_page_url: &str) -> String {
     } else {
         url_segments[0].to_owned()
     }
-}
-
-pub(crate) fn get_page(url: &str) -> anyhow::Result<String> {
-    let resp = reqwest::blocking::get(url)
-        .with_context(|| format!("failed to get page, url= {:?}", url))?;
-    debug!("response status: {:?}, url= {:?}", resp.status(), url);
-    resp.text()
-        .with_context(|| format!("faild to get resp text, url= {:?}", url))
 }
 
 pub(crate) fn get_selector(selector_str: &str) -> anyhow::Result<Selector> {
