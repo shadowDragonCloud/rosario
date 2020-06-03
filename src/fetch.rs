@@ -36,7 +36,7 @@ fn get_client() -> anyhow::Result<Client> {
 
 pub(crate) fn get_page(url: &str, referrer: &str) -> anyhow::Result<String> {
     let client = get_client()?;
-    let resp = client 
+    let resp = client
         .get(url)
         .header(header::REFERER, referrer)
         .send()

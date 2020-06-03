@@ -11,7 +11,7 @@ use std::path;
 
 const LOG_FILE_NAME: &str = "rosario.log";
 const LOG_DIR: &str = "logs/";
-const LOG_FILE_LEVEL: LevelFilter = LevelFilter::Trace;
+const LOG_FILE_LEVEL: LevelFilter = LevelFilter::Debug;
 const LOG_CONSOLE_LEVEL: LevelFilter = LevelFilter::Info;
 
 pub(crate) fn init() -> anyhow::Result<()> {

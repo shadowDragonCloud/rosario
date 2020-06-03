@@ -10,9 +10,9 @@ mod book;
 mod fetch;
 mod logs;
 mod parser;
+mod proxy;
 mod store;
 mod utils;
-mod proxy;
 
 #[allow(clippy::cognitive_complexity)]
 fn main() {
