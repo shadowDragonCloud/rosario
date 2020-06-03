@@ -4,6 +4,7 @@ use crate::parser::{
     tag_page::{get_and_parse_tag_page, get_max_tag_page_count},
 };
 use log::{debug, error, info, warn};
+use std::env;
 
 mod book;
 mod fetch;
@@ -11,21 +12,37 @@ mod logs;
 mod parser;
 mod store;
 mod utils;
+mod proxy;
 
 #[allow(clippy::cognitive_complexity)]
 fn main() {
+    // init log
     if let Err(e) = crate::logs::init() {
         println!("init log failed, e= {:?}", e);
         return;
     }
 
-    if let Err(e) = crate::store::init() {
-        error!("init store failed, e= {:?}", e);
+    // get valid proxy ip pool
+    // use cargo run proxy first
+    let args: Vec<String> = env::args().collect();
+    if args.len() >= 2 && args[1] == "proxy" {
+        info!("get and parse proxy pool");
+        if let Err(e) = crate::proxy::get_and_store_valid_proxies() {
+            warn!("failed to get and store valid proxies, e= {:?}", e);
+        }
+
         return;
     }
 
-    if let Err(e) = crate::fetch::init() {
-        error!("init fetch failed, e= {:?}", e);
+    // load valid proxy parsed by last step
+    if let Err(e) = crate::proxy::init() {
+        error!("init proxy failed, e= {:?}", e);
+        return;
+    }
+
+    // init store
+    if let Err(e) = crate::store::init() {
+        error!("init store failed, e= {:?}", e);
         return;
     }
 

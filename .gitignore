@@ -11,3 +11,5 @@ Cargo.lock
 
 /logs/
 /books/
+proxy
+proxy.old

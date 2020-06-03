@@ -1,16 +1,9 @@
-use anyhow::anyhow;
 use anyhow::Context;
-use lazy_static::lazy_static;
 use log::{debug, trace};
 use reqwest::blocking::Client;
 use reqwest::header;
-use std::sync::RwLock;
 
-lazy_static! {
-    static ref CLIENT: RwLock<Client> = RwLock::new(Client::new());
-}
-
-fn get_deafult_headers() -> anyhow::Result<header::HeaderMap> {
+pub(crate) fn get_default_headers() -> anyhow::Result<header::HeaderMap> {
     const USER_AGENT_VALUE: &str = r#"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36"#;
     const HOST_VALUE: &str = r#"book.douban.com"#;
     const CONNECTION_VALUE: &str = r#"keep-alive"#;
@@ -30,20 +23,20 @@ fn get_deafult_headers() -> anyhow::Result<header::HeaderMap> {
     Ok(headers)
 }
 
-pub(crate) fn init() -> anyhow::Result<()> {
-    let mut global_client = CLIENT.write().expect("get CLIENT write lock error");
-    *global_client = Client::builder()
-        .default_headers(get_deafult_headers()?)
-        .gzip(true)
-        .build()?;
-
-    Ok(())
+fn get_client() -> anyhow::Result<Client> {
+    let proxy_info = crate::proxy::get_proxy_to_use()?;
+    let proxy_str = format!("http://{}:{}", proxy_info.ip, proxy_info.port);
+    debug!("used proxy: {:?}", proxy_str);
+    let proxy = reqwest::Proxy::http(proxy_str.as_str())?;
+    Ok(Client::builder()
+        .default_headers(get_default_headers()?)
+        .proxy(proxy)
+        .build()?)
 }
 
 pub(crate) fn get_page(url: &str, referrer: &str) -> anyhow::Result<String> {
-    let resp = CLIENT
-        .read()
-        .map_err(|e| anyhow!("failed to get page, e= {:?} url= {:?}", e, url))?
+    let client = get_client()?;
+    let resp = client 
         .get(url)
         .header(header::REFERER, referrer)
         .send()
