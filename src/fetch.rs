@@ -19,8 +19,8 @@ fn set_last_fetch_time() {
 }
 
 fn sleep_if_fetch_too_fast() {
-    // the duration from last fetch is randomly generated, range: 1000ms - 3000ms
-    let expect_duration: u128 = rand::thread_rng().gen_range(1000, 3000);
+    // the duration from last fetch is randomly generated
+    let expect_duration: u128 = rand::thread_rng().gen_range(2000, 5000);
     let actual_duratioin = LAST_FETCH_TIME
         .read()
         .expect("failed to get LAST_FETCH_TIME read lock")

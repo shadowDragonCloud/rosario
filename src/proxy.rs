@@ -90,13 +90,13 @@ pub(crate) fn get_and_store_valid_proxies() -> anyhow::Result<()> {
     let mut proxy_infos: Vec<ProxyInfo> = Vec::new();
     // kuaidili proxy
     info!("begin parse kuaidaili proxies");
-    let kuaidaili_targets: Vec<i32> = (1..=10).collect();
+    let kuaidaili_targets: Vec<i32> = (1..=5).collect();
     let kuaidaili_proxy_infos = parse_kuaidaili_proxy_info(kuaidaili_targets.as_slice());
     proxy_infos.extend(kuaidaili_proxy_infos);
 
     // xicidaili proxy
     info!("begin parse xicidaili proxies");
-    let xicidaili_targets: Vec<i32> = (1..=5).collect();
+    let xicidaili_targets: Vec<i32> = (1..=2).collect();
     let xicidaili_proxy_infos = parse_xicidaili_proxy_info(xicidaili_targets.as_slice());
     proxy_infos.extend(xicidaili_proxy_infos);
     info!("parse proxies end, bengin test proxies");

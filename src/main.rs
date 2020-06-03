@@ -105,6 +105,11 @@ fn main() {
 
             // parse book page, get book info
             for book_url in books_url {
+                if crate::store::is_already_store(book_url.as_str()) {
+                    info!("book has been stored, url= {:?}", book_url);
+                    continue;
+                }
+
                 let book = match get_and_parse_book_page(book_url.as_str(), tag_page_url.as_str()) {
                     Ok(book) => book,
                     Err(e) => {
@@ -130,7 +135,7 @@ fn main() {
                 "store all books in this tag page success, tag_page_url= {:?}",
                 tag_page_url
             );
-            if idx >= 1 {
+            if idx >= 2 {
                 break;
             }
         }
