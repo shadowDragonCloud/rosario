@@ -1,7 +1,45 @@
 use anyhow::Context;
+use lazy_static::lazy_static;
 use log::{debug, trace};
+use rand::Rng;
 use reqwest::blocking::Client;
 use reqwest::header;
+use std::sync::RwLock;
+use std::time;
+
+lazy_static! {
+    static ref LAST_FETCH_TIME: RwLock<time::Instant> = RwLock::new(time::Instant::now());
+}
+
+fn set_last_fetch_time() {
+    let mut last_fetch_time = LAST_FETCH_TIME
+        .write()
+        .expect("failed to get LAST_FETCH_TIME write lock");
+    *last_fetch_time = time::Instant::now();
+}
+
+fn sleep_if_fetch_too_fast() {
+    // the duration from last fetch is randomly generated, range: 1000ms - 3000ms
+    let expect_duration: u128 = rand::thread_rng().gen_range(1000, 3000);
+    let actual_duratioin = LAST_FETCH_TIME
+        .read()
+        .expect("failed to get LAST_FETCH_TIME read lock")
+        .elapsed()
+        .as_millis();
+
+    // if actual time is large, fetch directly
+    if expect_duration <= actual_duratioin {
+        return;
+    }
+
+    debug!(
+        "fetch too fast, sleep time_ms= {:?}",
+        expect_duration - actual_duratioin
+    );
+    std::thread::sleep(time::Duration::from_millis(
+        (expect_duration - actual_duratioin) as u64,
+    ));
+}
 
 pub(crate) fn get_default_headers() -> anyhow::Result<header::HeaderMap> {
     const USER_AGENT_VALUE: &str = r#"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36"#;
@@ -35,6 +73,10 @@ fn get_client() -> anyhow::Result<Client> {
 }
 
 pub(crate) fn get_page(url: &str, referrer: &str) -> anyhow::Result<String> {
+    // control fetch speed
+    sleep_if_fetch_too_fast();
+    set_last_fetch_time();
+
     let client = get_client()?;
     let resp = client
         .get(url)
