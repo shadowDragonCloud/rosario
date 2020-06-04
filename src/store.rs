@@ -27,6 +27,13 @@ pub(crate) fn is_already_store(book_url: &str) -> bool {
         .contains(&book_id)
 }
 
+pub(crate) fn current_store_count() -> usize {
+    STORED_BOOK_IDS
+        .read()
+        .expect("failed to get STORED_BOOK_IDS read lock")
+        .len()
+}
+
 const STORE_TARGET_DIR: &str = "books/";
 
 pub(crate) fn init() -> anyhow::Result<()> {

@@ -48,6 +48,8 @@ pub(crate) fn get_default_headers() -> anyhow::Result<header::HeaderMap> {
     const ACCEPT_VALUE: &str = r#"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"#;
     const ACCEPT_ENCODING_VALUE: &str = r#"gzip deflate"#;
     const ACCEPT_LANGUAGE_VALUE: &str = r#"zh-CN,zh;q=0.9"#;
+    // use your own cookie
+    const COOKIE_VALUE: &str = r#""#;
 
     let mut headers = header::HeaderMap::new();
 
@@ -57,6 +59,7 @@ pub(crate) fn get_default_headers() -> anyhow::Result<header::HeaderMap> {
     headers.insert(header::ACCEPT, ACCEPT_VALUE.parse()?);
     headers.insert(header::ACCEPT_ENCODING, ACCEPT_ENCODING_VALUE.parse()?);
     headers.insert(header::ACCEPT_LANGUAGE, ACCEPT_LANGUAGE_VALUE.parse()?);
+    headers.insert(header::COOKIE, COOKIE_VALUE.parse()?);
 
     Ok(headers)
 }

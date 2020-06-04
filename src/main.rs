@@ -57,6 +57,10 @@ fn main() {
     info!("parse root page success");
     debug!("tags_href= {:?}", tags_href);
 
+    const TARGET_COUNT: usize = 10000;
+    let mut current_count: usize = crate::store::current_store_count();
+    info!("current store book count is {:?}", current_count);
+
     const HOST: &str = "https://book.douban.com";
     const ROOT_URL: &str = "https://book.douban.com/tag/";
     for tag_href in tags_href {
@@ -105,6 +109,11 @@ fn main() {
 
             // parse book page, get book info
             for book_url in books_url {
+                if TARGET_COUNT <= current_count {
+                    info!("reach target count, current count= {:?}, target count= {:?}, stop process.", current_count, TARGET_COUNT);
+                    std::process::exit(0);
+                }
+
                 if crate::store::is_already_store(book_url.as_str()) {
                     info!("book has been stored, url= {:?}", book_url);
                     continue;
@@ -124,22 +133,20 @@ fn main() {
                 );
                 if let Err(e) = crate::store::store(book_url.as_str(), book) {
                     warn!("store book page failed, e= {:?}, url= {:?}", e, book_url);
+                    continue;
                 }
+
                 info!(
                     "store book success, title= {:?}, url= {:?}",
                     book_title, book_url
                 );
+                current_count += 1;
             }
 
             info!(
                 "store all books in this tag page success, tag_page_url= {:?}",
                 tag_page_url
             );
-            if idx >= 2 {
-                break;
-            }
         }
-
-        break;
     }
 }
